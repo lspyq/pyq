@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大转盘</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            text-align: center;
+        }
+        canvas {
+            position: relative;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        img {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas></canvas>
+    <img src="1.png" id="one">
+    <img src="2.png" id="two">
+</body>
+<script>
+    
+wh = Math.min(document.body.clientWidth, document.body.clientHeight) - 50
+$('canvas').attr('width', wh + 'px')
+$('canvas').attr('height', wh + 'px')
+
+window.onload = function () {
+    class FwhfTurntable {
+        constructor() {
+            this.canvas = document.getElementsByTagName('canvas')[0];
+            this.context = this.canvas.getContext('2d');
+            //小灯的个数
+            this.lightNum = 12;
+            //讲评列表
+            this.prizeList = [
+                { text: '10元', img: document.getElementById('two') },
+                { text: '100元', img: document.getElementById('one') },
+                { text: '抱抱', img: document.getElementById('two') },
+                { text: '10元', img: document.getElementById('one') },
+                { text: '30元', img: document.getElementById('two') },
+                { text: '10元', img: document.getElementById('one') },
+                { text: '未中奖', img: document.getElementById('two') },
+                { text: '50元', img: document.getElementById('one') },
+                { text: '抱抱', img: document.getElementById('two') },
+                { text: '未中奖', img: document.getElementById('one') }
+            ];
+            this.timer = null;
+            this.rotateStart = 0;
+            this.rotateEnd = 0;
+            this.prizeListStore = [];
+        }
+        innt() {
+            this.canvas.width = wh;
+            this.canvas.height = wh;
+            if (this.rotateStart == this.rotateEnd) {
+                for (var i = 0; i < this.prizeList.length; i++) {
+                    this.prizeList[i].startAngle = (i * 360 / this.prizeList.length + 90) % 360;
+                }
+                this.bgLight();
+                this.prize();
+                this.pointer();
+                this.canvas.onclick = function (e) {
+                    if (e.offsetX > 180 / 400 * wh && e.offsetX < 220 / 400 * wh && e.offsetY > 180 / 400 * wh && e.offsetY < 220 / 400 * wh) {
+                        //具体概率根据需求修改，此处不作处理，随机任意值
+                        this.rotateEnd += this.rand(10000, 20000);
+                        this.timer = setInterval(() => {
+                            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                            this.bgLight();
+                            this.prize();
+                            this.pointer();
+                            if (this.rotateStart >= this.rotateEnd) {
+                                clearInterval(this.timer);
+                                this.timer = null;
+                                this.rotateStart = this.rotateEnd;
+                                for (var i = 0; i < this.prizeList.length; i++) {
+                                    if ((this.rotateStart + this.prizeList[i].startAngle) % 360 > 360 - 360 / this.prizeList.length) {
+                                        setTimeout(() => {
+                                            alert(this.prizeList[i].text);
+                                        }, 500)
+                                        break;
+                                    }
+                                }
+                            }
+                        }, 30)
+                    }
+                }.bind(this);
+            }
+        }
+        //周边背景灯
+        bgLight() {
+            this.context.beginPath();
+            this.context.fillStyle = "red";
+            this.context.arc(wh * 0.5, wh * 0.5, wh * 0.5, 0, 2 * Math.PI);
+            this.context.fill();
+            this.context.closePath();
+
+            this.context.beginPath();
+            this.context.fillStyle = "#f069a8";
+            this.context.arc(wh * 0.5, wh * 0.5, wh * 0.45, 0, 2 * Math.PI);
+            this.context.fill();
+            this.context.closePath();
+
+            for (var i = 0; i < this.lightNum; i++) {
+                this.context.beginPath();
+                this.context.fillStyle = this.rand(0, 9) == 0 ? "#f5c058" : "white";
+                this.context.arc(wh * 0.5 + wh * 0.475 * Math.cos(360 / this.lightNum * i * Math.PI / 180), wh * 0.5 + wh * 0.475 * Math.sin(360 / this.lightNum * i * Math.PI / 180), 6, 0, 2 * Math.PI);
+                this.context.fill();
+                this.context.closePath();
+            }
+        }
+        //奖品扇形
+        prize() {
+            if (this.rotateStart < this.rotateEnd) {
+                this.rotateStart += Math.ceil((this.rotateEnd - this.rotateStart) / 20);
+            }
+            this.context.save();
+            this.context.translate(wh * 0.5, wh * 0.5);
+            this.context.rotate(this.rotateStart * Math.PI / 180);
+            this.context.translate(-wh * 0.5, -wh * 0.5);
+            for (var i = 0; i < this.prizeList.length; i++) {
+                this.context.save();
+                this.context.translate(wh * 0.5, wh * 0.5);
+                this.context.rotate(360 / this.prizeList.length * i * Math.PI / 180);
+                this.context.translate(-wh * 0.5, -wh * 0.5);
+                this.context.beginPath();
+                if (i % 2 == 0) {
+                    this.context.fillStyle = "#ffe8b5";
+                } else {
+                    this.context.fillStyle = "#ffb933";
+                }
+                this.context.moveTo(wh * 0.5, wh * 0.5);
+                this.context.arc(wh * 0.5, wh * 0.5, wh * 0.425, 0, 2 / this.prizeList.length * Math.PI);
+                this.context.fill();
+                this.context.closePath();
+
+                this.context.save();
+                this.context.translate(wh * 0.725, wh * 0.65);
+                this.context.rotate((130 - this.prizeList.length * 2) * Math.PI / 180);
+                this.context.translate(-wh * 0.725, -wh * 0.65);
+                this.context.beginPath();
+                this.context.fillStyle = "#5c1e08";
+                this.context.font = 18 / 400 * wh + "px Georgia";
+                this.context.fillText(this.prizeList[i].text, wh * 0.740 - this.prizeList.length * 5, wh * 0.575);
+                // this.context.fillText(this.prizeList[i].text, 280/ 400 * wh - this.prizeList.length * 5, 230/ 400 * wh);
+                this.context.fill();
+
+                this.context.drawImage(this.prizeList[i].img, 295 / 400 * wh - this.prizeList.length * 5, 240 / 400 * wh, 50 / 400 * wh, 50 / 400 * wh)
+                this.context.closePath();
+                this.context.restore();
+
+                this.context.restore();
+            }
+            this.context.restore();
+        }
+        //指针
+        pointer() {
+            this.context.beginPath();
+            this.context.fillStyle = "red";
+            this.context.arc(wh * 0.5, wh * 0.5, wh * 0.075, 0, 2 * Math.PI);
+            this.context.fill();
+
+            this.context.moveTo(185 / 400 * wh, 200 / 400 * wh);
+            this.context.lineTo(215 / 400 * wh, 200 / 400 * wh);
+            this.context.lineTo(200 / 400 * wh, 120 / 400 * wh);
+            this.context.fill();
+            this.context.closePath();
+
+            this.context.beginPath();
+            this.context.fillStyle = "#000";
+            this.context.font = `bold ${20 / 400 * wh}px Georgia`;
+            this.context.fillText("抽奖", 181 / 400 * wh, 208 / 400 * wh);
+            this.context.closePath();
+        }
+
+        rand(n, m) {
+            var c = m - n + 1;
+            return Math.floor(Math.random() * c + n);
+        }
+    }
+    new FwhfTurntable().innt();
+}
+</script>
+<!-- <script src="main.js"></script> -->
+
+</html>
